@@ -5,35 +5,33 @@ var Express = require('express');
 var app = Express();
 
 app.get('/', function(req, res) {
-    res.send(generateStudents());
+    res.send(generateAnimals());
 });
 
 app.listen(3000, function() {
     console.log('Accepting HTTP requests on port 3000!');
 });
  
-function generateStudents(){
-	var numberOfStudents = chance.integer({
+function generateAnimals(){
+	var numberOfAnimals = chance.integer({
 		min : 1,
 		max : 10
 	});
 	
-	console.log(numberOfStudents);
+	console.log(numberOfAnimals);
 	
-	var Students = [];
+	var Animals = [];
 	
-	for(var i = 0; i < numberOfStudents; ++i){
+	for(var i = 0; i < numberOfAnimals; ++i){
         var gender = chance.gender();
-		Students.push({
+		Animals.push({
             
-            'first'   : chance.first({ gender: gender }),
-            'last'    : chance.last(),
+            'animal'   : chance.animal(),
+            'name'    :  chance.first({gender: gender}),
             'gender'  : gender,
-			'birthday': chance.birthday({year : chance.year({min : 1986,max : 1997})} ),
-            'country' : chance.country({ full: true }),
-            'email' : chance.email(),
+			'birthday': chance.birthday({year : chance.year({min : 2008,max : 2019})})
 		});
 	}
-	console.log(Students);
-	return Students;
+	console.log(Animals);
+	return Animals;
 }
