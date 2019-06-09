@@ -14,11 +14,11 @@ fi
 echo "Setup for the RES lab..."
 echo "Static App URL: $STATIC_APP"
 echo "Dynamic App URL: $DYNAMIC_APP"
-php /var/apache2/templates/config.template.php > /etc/apache2/sites-available/001-reverse-proxy.conf
-echo "ICI 01"
+php /var/apache2/templates/config-template.php > /etc/apache2/sites-available/001-reverse-proxy.conf
+
 # Apache gets grumpy about PID files pre-existing
 rm -f /var/run/apache2/apache2.pid
-echo "ICI 1"
+
 
 # create missing directories
 # (especially APACHE_RUN_DIR, APACHE_LOCK_DIR, and APACHE_LOG_DIR)
@@ -41,7 +41,5 @@ for e in "${!APACHE_@}"; do
 		mkdir -p "${!e}"
 	fi
 done
-
-echo "ICI 2"
 
 exec apache2 -DFOREGROUND
