@@ -8,7 +8,7 @@ $(function(){
       if( students.length > 0){
         message = students[0].firstName + " " + students[0].lastName;
       }
-      $(".skills").text(message);
+      $(".font-weight-light mb-0").text(message);
     });
   };
 
