@@ -1,5 +1,7 @@
 # Teaching-HEIGVD-RES-2018-Labo-HTTPInfra
 
+Julien Rod, Yoann Simonet
+
 ## Objectives
 
 The first objective of this lab is to get familiar with software tools that will allow us to build a **complete web infrastructure**. By that, we mean that we will build an environment that will allow us to serve **static and dynamic content** to web browsers. To do that, we will see that the **apache httpd server** can act both as a **HTTP server** and as a **reverse proxy**. We will also see that **express.js** is a JavaScript framework that makes it very easy to write dynamic web apps.
@@ -35,6 +37,18 @@ The third objective is to practice our usage of **Docker**. All the components o
 * You are able to show where the apache config files are located (in a running container).
 * You have **documented** your configuration in your report.
 
+### Travail réalisé
+
+Nous avons suivi le webcast et implémenté un serveur apache.
+ 
+Le bootstrap utilisé est similaire à celui que le prof montre dans sa vidéo, mais mis à jour depuis.
+
+Pour cette partie nous n'avons eu qu'à créer le DockerFile et télécharger le [bootstrap](https://startbootstrap.com/themes/freelancer/) .
+
+Pour valider cette étape, nous avons simplement lancé notre image docker (une fois construite), 
+puis, nous y avons accédé via telnet. Nous recevons bel et bien le code PHP de la page correspondante.
+
+
 ## Step 2: Dynamic HTTP server with express.js
 
 ### Webcasts
@@ -51,6 +65,8 @@ The third objective is to practice our usage of **Docker**. All the components o
 * You don't have to use express.js; if you want, you can use another JavaScript web framework or event another language.
 * You have **documented** your configuration in your report.
 
+### Travail réalisé
+Nous avons suivi le webcast et implémenté le serveur dynamic.
 
 ## Step 3: Reverse proxy with apache (static configuration)
 
@@ -69,6 +85,19 @@ The third objective is to practice our usage of **Docker**. All the components o
 * You are able to explain why the static configuration is fragile and needs to be improved.
 * You have **documented** your configuration in your report.
 
+### Travail réalisé
+Nous avons suivi le webcast et implémenté un reverse proxy.
+
+Pour ceci nous avons dû créer le Dockerfile et les différents fichiers de configuration se trouvant dans le dossier
+sites-available.
+
+Nos deux sites (dynamique et statique) étant lancé grâce à Docker, ils ne peuvent pas être atteints
+depuis l'extérieur de l'application (sauf si on lance leurs images avec -p). Le reverse proxy sert d'intermédiaire entre l'utilisateur
+et ces sites-là grâce au port mapping 8080:80. 
+
+La configuration statique est fragile car rien ne nous indique que les adresses IP de nos différents sites
+resteront les mêmes.
+
 
 ## Step 4: AJAX requests with JQuery
 
@@ -83,6 +112,57 @@ The third objective is to practice our usage of **Docker**. All the components o
 * You are able to prove that AJAX requests are sent by the browser and you can show the content of th responses.
 * You are able to explain why your demo would not work without a reverse proxy (because of a security restriction).
 * You have **documented** your configuration in your report.
+
+### Travail réalisé
+Nous avons suivi le webcast et pour installer VIM et pour réaliser le programme chargé de modifier le texte toutes les 2
+secondes.
+
+Lors de l'installation de VIM sur notre serveur dynamique, nous nous sommes heurté à une erreur lors du build de notre image.
+Nous avons réussi à la contourner en utilisant le code du Dockerfile ci-dessous:
+```bash
+FROM node:4.4
+
+RUN printf "deb http://archive.debian.org/debian/ jessie main\ndeb-src http://archive.debian.org/debian/ jessie main\ndeb http://security.debian.org jessie/updates main\ndeb-src http://security.debian.org jessie/updates main" > /etc/apt/sources.list
+RUN apt-get update && apt-get install -y vim
+
+COPY src /opt/app
+
+
+RUN npm install --save chance
+RUN npm install --save express
+
+CMD ["node", "/opt/app/index.js"]
+```
+
+Nous avons aussi implémenter le code javascript demandé dans la partie statique de l'application.
+```javascript
+$(function(){
+  console.log("Loading students");
+
+  function loadStudents(){
+    $.getJSON( "/api/students/", function( students ){
+      console.log(students);
+      var message = "Nobody is here";
+      if( students.length > 0){
+        message = students[0].firstName + " " + students[0].lastName;
+      }
+      $(".font-weight-light mb-0").text(message);
+    });
+  };
+
+  loadStudents();
+  setInterval( loasStudents, 2000 );
+});
+```
+
+Nous avons aussi rajouté le lien javascript suivant au bas de la page de notre serveur statique (index.html) :
+```html
+  <!-- Custom script to load students -->
+  <script src="js/students.js"></script>
+```
+On constate maintenant que le nom change toutes les 2 secondes si on lance nos serveurs et qu'on y accède via un brawser.
+
+Notre démo ne marcherait pas sans reverse proxy, car nous ne pouvons pas nous connecter directement aux serveurs statique ou dynamique.
 
 ## Step 5: Dynamic reverse proxy configuration
 
@@ -102,6 +182,93 @@ The third objective is to practice our usage of **Docker**. All the components o
 * You are able to do an end-to-end demo with a well-prepared scenario. Make sure that you can demonstrate that everything works fine when the IP addresses change!
 * You are able to explain how you have implemented the solution and walk us through the configuration and the code.
 * You have **documented** your configuration in your report.
+
+### Travail réalisé
+Nous avons suivi le webcast pour pouvoir passer les adresses de nos différents sites à notre reverse proxy.
+
+Pour ce faire, nous avons dû créer un fichier apache2-foreground pour remplacer celui de base.
+```bash
+#!/bin/bash
+set -e
+
+# Note: we don't just use "apache2ctl" here because it itself is just a shell-script wrapper around apache2 which provides extra functionality like "apache2ctl start" for launching apache2 in the background.
+# (also, when run as "apache2ctl <apache args>", it does not use "exec", which leaves an undesirable resident shell process)
+
+: "${APACHE_CONFDIR:=/etc/apache2}"
+: "${APACHE_ENVVARS:=$APACHE_CONFDIR/envvars}"
+if test -f "$APACHE_ENVVARS"; then
+	. "$APACHE_ENVVARS"
+fi
+
+# Add setup for RES lab
+echo "Setup for the RES lab..."
+echo "Static App URL: $STATIC_APP"
+echo "Dynamic App URL: $DYNAMIC_APP"
+php /var/apache2/templates/config-template.php > /etc/apache2/sites-available/001-reverse-proxy.conf
+
+# Apache gets grumpy about PID files pre-existing
+rm -f /var/run/apache2/apache2.pid
+
+
+# create missing directories
+# (especially APACHE_RUN_DIR, APACHE_LOCK_DIR, and APACHE_LOG_DIR)
+for e in "${!APACHE_@}"; do
+	if [[ "$e" == *_DIR ]] && [[ "${!e}" == /* ]]; then
+		# handle "/var/lock" being a symlink to "/run/lock", but "/run/lock" not existing beforehand, so "/var/lock/something" fails to mkdir
+		#   mkdir: cannot create directory '/var/lock': File exists
+		dir="${!e}"
+		while [ "$dir" != "$(dirname "$dir")" ]; do
+			dir="$(dirname "$dir")"
+			if [ -d "$dir" ]; then
+				break
+			fi
+			absDir="$(readlink -f "$dir" 2>/dev/null || :)"
+			if [ -n "$absDir" ]; then
+				mkdir -p "$absDir"
+			fi
+		done
+
+		mkdir -p "${!e}"
+	fi
+done
+
+exec apache2 -DFOREGROUND
+```
+Créer un fichier config-template.php pour enregistrer les adresses de nos deux serveurs sur la base
+du fichier 001-reverse-proxy.conf.
+```php
+<?php
+	$static_app = getenv('STATIC_APP');
+	$dynamic_app = getenv('DYNAMIC_APP');
+?>
+<VirtualHost *:80>
+	ServerName demo.res.ch
+
+	ProxyPass '/api/students/' 'http://<?php print "$dynamic_app"?>/'
+	ProxyPassReverse '/api/students/' 'http://<?php print "$dynamic_app"?>/'
+
+	ProxyPass '/' 'http://<?php print "$static_app"?>/'
+    ProxyPassReverse '/' 'http://<?php print "$static_app"?>/'
+</VirtualHost>
+```
+Puis, nous avons modifié notre Dockerfile comme ceci :
+```Dockerfile
+FROM php:5.6-apache
+
+RUN apt-get update && apt-get install -y vim
+
+COPY apache2-foreground /usr/local/bin/
+COPY templates /var/apache2/templates
+
+COPY conf/ /etc/apache2
+
+RUN a2enmod proxy proxy_http
+RUN a2ensite 000-* 001-*
+```
+pour que nous puissions lui passer les adresses des serveurs via l'option -e de Docker.
+
+Après avoir testé notre programme, nous avons validé le fait que nous pouvions bel et bien passer
+les adresses à notre reverse proxy au démarrage de ce dernier.
 
 ## Additional steps to get extra points on top of the "base" grade
 
@@ -131,3 +298,11 @@ The third objective is to practice our usage of **Docker**. All the components o
 * You develop a web app (e.g. with express.js) that administrators can use to monitor and update your web infrastructure.
 * You find a way to control your Docker environment (list containers, start/stop containers, etc.) from the web app. For instance, you use the Dockerode npm module (or another Docker client library, in any of the supported languages).
 * You have documented your configuration and your validation procedure in your report.
+
+### Conclusion
+Dans l'ensemble, à part quelques petits problèmes rencontrés (problème sité plus haut, oubli de $
+dans les variables php, etc...) ce laboratoire c'est bien déroulé.
+
+Nous avons simplement suivi les podcasts web pour le réaliser.
+
+Dommage que nous n'ayons pas plus de temps pour faire les points bonus (fin de semestre chargé).
