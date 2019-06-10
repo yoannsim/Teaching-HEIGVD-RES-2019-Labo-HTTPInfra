@@ -66,7 +66,45 @@ puis, nous y avons accédé via telnet. Nous recevons bel et bien le code PHP de
 * You have **documented** your configuration in your report.
 
 ### Travail réalisé
-Nous avons suivi le webcast et implémenté le serveur dynamic.
+Nous avons suivi le webcast et implémenté le serveur dynamic qui génére aléatoirement des animaux.
+```var Chance = require('chance');
+var chance = new Chance();
+
+var Express = require('express');
+var app = Express();
+
+app.get('/', function(req, res) {
+    res.send(generateAnimals());
+});
+
+app.listen(3000, function() {
+    console.log('Accepting HTTP requests on port 3000!');
+});
+ 
+function generateAnimals(){
+	var numberOfAnimals = chance.integer({
+		min : 1,
+		max : 10
+	});
+	
+	console.log(numberOfAnimals);
+	
+	var Animals = [];
+	
+	for(var i = 0; i < numberOfAnimals; ++i){
+        var gender = chance.gender();
+		Animals.push({
+            
+            'animal'   : chance.animal(),
+            'name'    :  chance.first({gender: gender}),
+            'gender'  : gender,
+			'birthday': chance.birthday({year : chance.year({min : 2008,max : 2019})})
+		});
+	}
+	console.log(Animals);
+	return Animals;
+}
+```
 
 ## Step 3: Reverse proxy with apache (static configuration)
 
@@ -135,30 +173,33 @@ CMD ["node", "/opt/app/index.js"]
 ```
 
 Nous avons aussi implémenter le code javascript demandé dans la partie statique de l'application.
-```javascript
-$(function(){
-  console.log("Loading students");
+```$(function(){
+  console.log("Loading animals");
 
-  function loadStudents(){
-    $.getJSON( "/api/students/", function( students ){
-      console.log(students);
+  function loadAnimals(){
+    $.getJSON( "/api/animals/", function( animals ){
+      console.log(animals);
       var message = "Nobody is here";
-      if( students.length > 0){
-        message = students[0].firstName + " " + students[0].lastName;
+      if( animals.length > 0){
+        message = animals[0].animal + " " + animals[0].name;
       }
-      $(".font-weight-light mb-0").text(message);
+      $(".test").text(message);
     });
   };
 
-  loadStudents();
-  setInterval( loasStudents, 2000 );
+  loadAnimals();
+  setInterval( loadAnimals, 2000 );
 });
 ```
 
-Nous avons aussi rajouté le lien javascript suivant au bas de la page de notre serveur statique (index.html) :
+Nous avons aussi rajouté le lien javascript suivant au bas de la page de notre serveur statique (index.html) et aussi la classe test dans le texet qui devait changer :
 ```html
-  <!-- Custom script to load students -->
-  <script src="js/students.js"></script>
+  <h2 class="test">J' aime le C++</h2>
+  .
+  .
+  .
+  <!-- Custom script to load animals -->
+  <script src="js/animals.js"></script>
 ```
 On constate maintenant que le nom change toutes les 2 secondes si on lance nos serveurs et qu'on y accède via un brawser.
 
@@ -244,8 +285,8 @@ du fichier 001-reverse-proxy.conf.
 <VirtualHost *:80>
 	ServerName demo.res.ch
 
-	ProxyPass '/api/students/' 'http://<?php print "$dynamic_app"?>/'
-	ProxyPassReverse '/api/students/' 'http://<?php print "$dynamic_app"?>/'
+	ProxyPass '/api/animals/' 'http://<?php print "$dynamic_app"?>/'
+	ProxyPassReverse '/api/animals/' 'http://<?php print "$dynamic_app"?>/'
 
 	ProxyPass '/' 'http://<?php print "$static_app"?>/'
     ProxyPassReverse '/' 'http://<?php print "$static_app"?>/'
